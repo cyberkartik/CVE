@@ -1,0 +1,159 @@
+Select Distinct Top 1000000 Coalesce(tsysOS.Image,
+tsysAssetTypes.AssetTypeIcon10) As icon,
+tblAssets.AssetID,
+tblAssets.AssetName,
+tblAssets.Domain,
+tblState.Statename As State,
+tblAssets.IPAddress,
+tsysIPLocations.IPLocation,
+tblAssetCustom.Manufacturer,
+tblAssetCustom.Model,
+subquery1.SystemVersion,
+subquery1.[MacOS Patch Status],
+subquery2.OsVersion As IntuneOSVersion,
+subquery2.[Intune Patch Status],
+subquery3.OsVersion,
+subquery3.[Airwatch Patch Status],
+tblAssets.Lastseen,
+tblAssets.Lasttried,
+Case
+When subquery1.[MacOS Patch Status] = 'Up to date' Then '#d4f4be'
+When subquery2.[Intune Patch Status] = 'Up to date' Then '#d4f4be'
+When subquery3.[Airwatch Patch Status] = 'Up to date' Then '#d4f4be'
+Else '#ffadad'
+End As backgroundcolor
+From tblAssets
+Left Join (Select tblmacosinfo.AssetID,
+tblmacosinfo.SystemVersion,
+Case
+When Len(tblmacosinfo.SystemVersion) -
+Len(Replace(tblmacosinfo.SystemVersion, '.', '')) = 2 And
+Cast(SubString(ParseName(tblmacosinfo.SystemVersion, 3),
+PatIndex('%[0-9]%', ParseName(tblmacosinfo.SystemVersion, 3)),
+Len(ParseName(tblmacosinfo.SystemVersion, 3))) As INT) > 12 Then
+'Up to date'
+When Len(tblmacosinfo.SystemVersion) -
+Len(Replace(tblmacosinfo.SystemVersion, '.', '')) = 2 And
+Cast(SubString(ParseName(tblmacosinfo.SystemVersion, 3),
+PatIndex('%[0-9]%', ParseName(tblmacosinfo.SystemVersion, 3)),
+Len(ParseName(tblmacosinfo.SystemVersion, 3))) As INT) = 12 And
+Cast(ParseName(tblmacosinfo.SystemVersion, 2) As INT) > 3 Then
+'Up to date'
+When Len(tblmacosinfo.SystemVersion) -
+Len(Replace(tblmacosinfo.SystemVersion, '.', '')) = 2 And
+Cast(SubString(ParseName(tblmacosinfo.SystemVersion, 3),
+PatIndex('%[0-9]%', ParseName(tblmacosinfo.SystemVersion, 3)),
+Len(ParseName(tblmacosinfo.SystemVersion, 3))) As INT) = 12 And
+Cast(ParseName(tblmacosinfo.SystemVersion, 2) As INT) = 3 And
+Cast(Left(ParseName(tblmacosinfo.SystemVersion, 1), CharIndex(' (',
+ParseName(tblmacosinfo.SystemVersion, 1) + ' (') - 1) As INT) >= 1
+Then 'Up to date'
+When Len(tblmacosinfo.SystemVersion) -
+Len(Replace(tblmacosinfo.SystemVersion, '.', '')) = 1 And
+Cast(SubString(ParseName(tblmacosinfo.SystemVersion, 2),
+PatIndex('%[0-9]%', ParseName(tblmacosinfo.SystemVersion, 2)),
+Len(ParseName(tblmacosinfo.SystemVersion, 2))) As INT) > 12 Then
+'Up to date'
+When Len(tblmacosinfo.SystemVersion) -
+Len(Replace(tblmacosinfo.SystemVersion, '.', '')) = 1 And
+Cast(SubString(ParseName(tblmacosinfo.SystemVersion, 2),
+PatIndex('%[0-9]%', ParseName(tblmacosinfo.SystemVersion, 2)),
+Len(ParseName(tblmacosinfo.SystemVersion, 2))) As INT) = 12 And
+Cast(Left(ParseName(tblmacosinfo.SystemVersion, 1), CharIndex(' (',
+ParseName(tblmacosinfo.SystemVersion, 1) + ' (') - 1) As INT) > 3 Then
+'Up to date'
+Else 'Out of date'
+End As [MacOS Patch Status]
+From tblmacosinfo
+Where tblmacosinfo.SystemVersion Not Like '%Server%') As subquery1
+On subquery1.AssetID = tblAssets.AssetID
+Left Join (Select tblIntuneDevice.AssetId,
+tblIntuneDevice.OsVersion,
+Case
+When
+Len(tblIntuneDevice.OsVersion) -
+Len(Replace(tblIntuneDevice.OsVersion, '.', '')) = 2 And
+Cast(ParseName(tblIntuneDevice.OsVersion, 3) As int) > 15 Then
+'Up to date'
+When
+Len(tblIntuneDevice.OsVersion) -
+Len(Replace(tblIntuneDevice.OsVersion, '.', '')) = 2 And
+Cast(ParseName(tblIntuneDevice.OsVersion, 3) As int) = 15 And
+Cast(ParseName(tblIntuneDevice.OsVersion, 2) As int) > 4 Then
+'Up to date'
+When
+Len(tblIntuneDevice.OsVersion) -
+Len(Replace(tblIntuneDevice.OsVersion, '.', '')) = 2 And
+Cast(ParseName(tblIntuneDevice.OsVersion, 3) As int) = 15 And
+Cast(ParseName(tblIntuneDevice.OsVersion, 2) As int) = 4 And
+Cast(ParseName(tblIntuneDevice.OsVersion, 1) As int) >= 1 Then
+'Up to date'
+When
+Len(tblIntuneDevice.OsVersion) -
+Len(Replace(tblIntuneDevice.OsVersion, '.', '')) = 1 And
+Cast(ParseName(tblIntuneDevice.OsVersion, 2) As int) > 15 Then
+'Up to date'
+When
+Len(tblIntuneDevice.OsVersion) -
+Len(Replace(tblIntuneDevice.OsVersion, '.', '')) = 1 And
+Cast(ParseName(tblIntuneDevice.OsVersion, 2) As int) = 15 And
+Cast(ParseName(tblIntuneDevice.OsVersion, 1) As int) > 4 Then
+'Up to date'
+Else 'Out of date'
+End As [Intune Patch Status]
+From tblIntuneDevice
+Inner Join tblassets On tblassets.AssetID = tblIntuneDevice.AssetId
+Inner Join tsysAssetTypes On tsysAssetTypes.AssetType =
+tblassets.Assettype
+Where (tsysAssetTypes.AssetTypename Like '%iphone%' Or
+tsysAssetTypes.AssetTypename Like '%ipad%')) As subquery2 On
+subquery2.AssetId = tblAssets.AssetID
+Left Join (Select tblAirWatchDevice.AssetId,
+tblAirWatchDevice.OsVersion,
+Case
+When Len(tblAirWatchDevice.OsVersion) -
+Len(Replace(tblAirWatchDevice.OsVersion, '.', '')) = 2 And
+Cast(ParseName(tblAirWatchDevice.OsVersion, 3) As int) > 15 Then
+'Up to date'
+When Len(tblAirWatchDevice.OsVersion) -
+Len(Replace(tblAirWatchDevice.OsVersion, '.', '')) = 2 And
+Cast(ParseName(tblAirWatchDevice.OsVersion, 3) As int) = 15 And
+Cast(ParseName(tblAirWatchDevice.OsVersion, 2) As int) > 4 Then
+'Up to date'
+When Len(tblAirWatchDevice.OsVersion) -
+Len(Replace(tblAirWatchDevice.OsVersion, '.', '')) = 2 And
+Cast(ParseName(tblAirWatchDevice.OsVersion, 3) As int) = 15 And
+Cast(ParseName(tblAirWatchDevice.OsVersion, 2) As int) = 4 And
+Cast(ParseName(tblAirWatchDevice.OsVersion, 1) As int) >= 1 Then
+'Up to date'
+When Len(tblAirWatchDevice.OsVersion) -
+Len(Replace(tblAirWatchDevice.OsVersion, '.', '')) = 1 And
+Cast(ParseName(tblAirWatchDevice.OsVersion, 2) As int) > 15 Then
+'Up to date'
+When Len(tblAirWatchDevice.OsVersion) -
+Len(Replace(tblAirWatchDevice.OsVersion, '.', '')) = 1 And
+Cast(ParseName(tblAirWatchDevice.OsVersion, 2) As int) = 15 And
+Cast(ParseName(tblAirWatchDevice.OsVersion, 1) As int) > 4 Then
+'Up to date'
+Else 'Out of date'
+End As [Airwatch Patch Status]
+From tblAirWatchDevice
+Inner Join tblassets On tblassets.AssetID = tblAirWatchDevice.AssetId
+Inner Join tsysAssetTypes On tsysAssetTypes.AssetType =
+tblassets.Assettype
+Where (tsysAssetTypes.AssetTypename Like '%iphone%' Or
+tsysAssetTypes.AssetTypename Like '%ipad%')) As subquery3 On
+subquery3.AssetId = tblAssets.AssetID
+Inner Join tblAssetCustom On tblAssets.AssetID = tblAssetCustom.AssetID
+Left Join tsysOS On tsysOS.OScode = tblAssets.OScode
+Left Join tsysIPLocations On tblAssets.IPNumeric >= tsysIPLocations.StartIP
+And tblAssets.IPNumeric <= tsysIPLocations.EndIP
+Inner Join tsysAssetTypes On tsysAssetTypes.AssetType = tblAssets.Assettype
+Inner Join tblState On tblState.State = tblAssetCustom.State
+Where (subquery1.SystemVersion Is Not Null Or subquery2.OsVersion Is Not Null Or
+subquery3.OsVersion Is Not Null) And tblAssetCustom.State = 1 And
+(tsysAssetTypes.AssetTypename Like '%iphone%' Or
+tsysAssetTypes.AssetTypename Like '%ipad%' Or tsysAssetTypes.AssetTypename
+Like '%Apple%')
+Order By tblAssets.Domain,
+tblAssets.AssetName
